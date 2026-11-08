@@ -1,0 +1,566 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  BUYER
+  SELLER
+  CREATOR
+  CARRIER
+  MODERATOR
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  BANNED
+}
+
+enum StoreStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum ProductType {
+  PHYSICAL
+  DIGITAL
+  SERVICE
+  SUBSCRIPTION
+}
+
+enum ProductStatus {
+  DRAFT
+  PENDING_REVIEW
+  ACTIVE
+  REJECTED
+  ARCHIVED
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  RETURNED
+}
+
+enum PaymentMethod {
+  COD
+  CARD
+  WALLET
+}
+
+enum PaymentStatus {
+  PENDING
+  AUTHORIZED
+  PAID
+  REFUNDED
+  FAILED
+}
+
+enum ShipmentStatus {
+  CREATED
+  PICKED_UP
+  IN_TRANSIT
+  OUT_FOR_DELIVERY
+  DELIVERED
+  FAILED
+  RETURNED
+}
+
+enum CarrierStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+}
+
+enum WalletTxType {
+  CREDIT
+  DEBIT
+  ESCROW_HOLD
+  ESCROW_RELEASE
+  PAYOUT
+}
+
+enum PlanAudience {
+  SELLER
+  CARRIER
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  EXPIRED
+}
+
+enum ModerationStatus {
+  APPROVED
+  PENDING
+  REMOVED
+}
+
+enum ReportStatus {
+  OPEN
+  REVIEWING
+  ACTIONED
+  DISMISSED
+}
+
+enum SettlementStatus {
+  PENDING
+  REMITTED
+}
+
+enum TopUpStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum PayoutStatus {
+  REQUESTED
+  PAID
+  REJECTED
+}
+
+model User {
+  id            String       @id @default(uuid())
+  email         String       @unique
+  passwordHash  String
+  role          Role         @default(BUYER)
+  status        UserStatus   @default(ACTIVE)
+  emailVerified Boolean      @default(false)
+  country       String?
+  locale        String       @default("en")
+  currency      String       @default("USD")
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  profile       Profile?
+  refreshTokens RefreshToken[]
+  stores        Store[]
+  orders        Order[]      @relation("BuyerOrders")
+  wallet        Wallet?
+  carrier       Carrier?
+  subscriptions Subscription[]
+  posts         Post[]
+  comments      Comment[]
+  reactions     Reaction[]
+  following     Follow[]     @relation("Follower")
+  followers     Follow[]     @relation("Following")
+  reports       Report[]
+  topUps        TopUp[]
+  payouts       PayoutRequest[]
+  conversations ConversationMember[]
+  messages      Message[]
+}
+
+model Profile {
+  id          String  @id @default(uuid())
+  userId      String  @unique
+  username    String  @unique
+  displayName String
+  avatarUrl   String?
+  bio         String?
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+}
+
+model Store {
+  id          String      @id @default(uuid())
+  ownerId     String
+  slug        String      @unique
+  name        String
+  description String?
+  logoUrl     String?
+  templateKey String      @default("default")
+  currency    String      @default("USD")
+  country     String?
+  status      StoreStatus @default(ACTIVE)
+  shippingFlatMinor     Int  @default(0)
+  freeShippingOverMinor Int?
+  createdAt   DateTime    @default(now())
+  owner       User        @relation(fields: [ownerId], references: [id])
+  products    Product[]
+  orders      Order[]
+  pages       StorePage[]
+  @@index([ownerId])
+}
+
+model Category {
+  id       String     @id @default(uuid())
+  slug     String     @unique
+  name     String
+  parentId String?
+  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryTree")
+  products Product[]
+}
+
+model Product {
+  id             String        @id @default(uuid())
+  storeId        String
+  categoryId     String?
+  type           ProductType
+  title          String
+  slug           String
+  description    String
+  priceMinor     Int
+  currency       String        @default("USD")
+  stock          Int?
+  status         ProductStatus @default(PENDING_REVIEW)
+  moderationNote String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  store          Store         @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  category       Category?     @relation(fields: [categoryId], references: [id])
+  variants       ProductVariant[]
+  files          ProductFile[]
+  orderItems     OrderItem[]
+  posts          Post[]
+  landing        LandingPage?
+  @@unique([storeId, slug])
+  @@index([status, type])
+}
+
+model ProductVariant {
+  id         String  @id @default(uuid())
+  productId  String
+  name       String
+  priceMinor Int?
+  stock      Int?
+  product    Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model ProductFile {
+  id         String  @id @default(uuid())
+  productId  String
+  storageKey String
+  fileName   String
+  product    Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  buyerId         String
+  storeId         String
+  status          OrderStatus @default(PENDING)
+  totalMinor      Int
+  subtotalMinor   Int         @default(0)
+  shippingFeeMinor Int        @default(0)
+  platformFeeMinor Int        @default(0)
+  currency        String
+  shippingAddress Json
+  buyerNote       String?
+  createdAt       DateTime    @default(now())
+  buyer           User        @relation("BuyerOrders", fields: [buyerId], references: [id])
+  store           Store       @relation(fields: [storeId], references: [id])
+  items           OrderItem[]
+  payment         Payment?
+  shipment        Shipment?
+  settlement      CodSettlement?
+  @@index([buyerId])
+  @@index([storeId, status])
+}
+
+model OrderItem {
+  id             String  @id @default(uuid())
+  orderId        String
+  productId      String
+  quantity       Int
+  unitPriceMinor Int
+  title          String  @default("")
+  variantId      String?
+  variantName    String?
+  order          Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product        Product @relation(fields: [productId], references: [id])
+}
+
+model Payment {
+  id          String        @id @default(uuid())
+  orderId     String        @unique
+  method      PaymentMethod
+  status      PaymentStatus @default(PENDING)
+  amountMinor Int
+  currency    String
+  providerRef String?
+  createdAt   DateTime      @default(now())
+  order       Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+}
+
+model Wallet {
+  id           String   @id @default(uuid())
+  userId       String   @unique
+  balanceMinor Int      @default(0)
+  currency     String   @default("USD")
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions WalletTransaction[]
+}
+
+model WalletTransaction {
+  id          String       @id @default(uuid())
+  walletId    String
+  type        WalletTxType
+  amountMinor Int
+  reference   String?
+  createdAt   DateTime     @default(now())
+  wallet      Wallet       @relation(fields: [walletId], references: [id], onDelete: Cascade)
+  @@index([walletId])
+}
+
+model Carrier {
+  id          String        @id @default(uuid())
+  userId      String        @unique
+  companyName String
+  countries   String[]
+  ratingAvg   Float         @default(0)
+  status      CarrierStatus @default(PENDING)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  zones       CarrierZone[]
+  shipments   Shipment[]
+  settlements CodSettlement[]
+}
+
+model CarrierZone {
+  id         String  @id @default(uuid())
+  carrierId  String
+  country    String
+  region     String?
+  priceMinor Int
+  currency   String  @default("USD")
+  etaDays    Int
+  carrier    Carrier @relation(fields: [carrierId], references: [id], onDelete: Cascade)
+  @@index([carrierId, country])
+}
+
+model Shipment {
+  id             String         @id @default(uuid())
+  orderId        String         @unique
+  carrierId      String
+  trackingCode   String         @unique
+  status         ShipmentStatus @default(CREATED)
+  codAmountMinor Int?
+  carrierFeeMinor Int          @default(0)
+  currency       String         @default("USD")
+  createdAt      DateTime       @default(now())
+  order          Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  carrier        Carrier        @relation(fields: [carrierId], references: [id])
+  events         TrackingEvent[]
+}
+
+model TrackingEvent {
+  id         String         @id @default(uuid())
+  shipmentId String
+  status     ShipmentStatus
+  note       String?
+  createdAt  DateTime       @default(now())
+  shipment   Shipment       @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+}
+
+model Plan {
+  id             String       @id @default(uuid())
+  key            String       @unique
+  audience       PlanAudience
+  priceMinor     Int
+  currency       String       @default("USD")
+  intervalMonths Int          @default(1)
+  features       Json
+  subscriptions  Subscription[]
+}
+
+model Subscription {
+  id        String             @id @default(uuid())
+  userId    String
+  planId    String
+  status    SubscriptionStatus @default(ACTIVE)
+  startedAt DateTime           @default(now())
+  endsAt    DateTime?
+  user      User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan      Plan               @relation(fields: [planId], references: [id])
+  @@index([userId])
+}
+
+model Post {
+  id         String           @id @default(uuid())
+  authorId   String
+  body       String?
+  mediaUrls  String[]
+  productId  String?
+  moderation ModerationStatus @default(APPROVED)
+  createdAt  DateTime         @default(now())
+  author     User             @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  product    Product?         @relation(fields: [productId], references: [id])
+  comments   Comment[]
+  reactions  Reaction[]
+  @@index([createdAt])
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  postId    String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+}
+
+model Reaction {
+  userId String
+  postId String
+  kind   String @default("like")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  @@id([userId, postId])
+}
+
+model Follow {
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+  follower    User     @relation("Follower", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("Following", fields: [followingId], references: [id], onDelete: Cascade)
+  @@id([followerId, followingId])
+}
+
+model Report {
+  id         String       @id @default(uuid())
+  reporterId String
+  targetType String
+  targetId   String
+  reason     String
+  status     ReportStatus @default(OPEN)
+  createdAt  DateTime     @default(now())
+  reporter   User         @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  @@index([status])
+}
+
+model StorePage {
+  id        String   @id @default(uuid())
+  storeId   String
+  slug      String
+  title     String
+  sections  Json
+  published Boolean  @default(true)
+  updatedAt DateTime @updatedAt
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  @@unique([storeId, slug])
+}
+
+model LandingPage {
+  id        String   @id @default(uuid())
+  productId String   @unique
+  slug      String   @unique
+  theme     Json
+  sections  Json
+  published Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+}
+
+model CodSettlement {
+  id               String           @id @default(uuid())
+  orderId          String           @unique
+  carrierId        String
+  storeId          String
+  collectedMinor   Int
+  carrierFeeMinor  Int
+  platformFeeMinor Int
+  sellerNetMinor   Int
+  currency         String
+  status           SettlementStatus @default(PENDING)
+  remittedAt       DateTime?
+  createdAt        DateTime         @default(now())
+  order            Order            @relation(fields: [orderId], references: [id])
+  carrier          Carrier          @relation(fields: [carrierId], references: [id])
+  @@index([carrierId, status])
+  @@index([storeId, status])
+}
+
+model FxRate {
+  id        String   @id @default(uuid())
+  base      String
+  quote     String
+  rate      Float
+  updatedAt DateTime @updatedAt
+  @@unique([base, quote])
+}
+
+model TopUp {
+  id          String      @id @default(uuid())
+  userId      String
+  provider    String
+  providerRef String?     @unique
+  amountMinor Int
+  currency    String
+  status      TopUpStatus @default(PENDING)
+  createdAt   DateTime    @default(now())
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId])
+}
+
+model PayoutRequest {
+  id          String       @id @default(uuid())
+  userId      String
+  amountMinor Int
+  currency    String
+  method      String
+  destination String
+  status      PayoutStatus @default(REQUESTED)
+  note        String?
+  reference   String?
+  createdAt   DateTime     @default(now())
+  processedAt DateTime?
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([status])
+  @@index([userId])
+}
+
+model Conversation {
+  id            String               @id @default(uuid())
+  key           String               @unique
+  createdAt     DateTime             @default(now())
+  lastMessageAt DateTime             @default(now())
+  members       ConversationMember[]
+  messages      Message[]
+}
+
+model ConversationMember {
+  conversationId String
+  userId         String
+  lastReadAt     DateTime?
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@id([conversationId, userId])
+  @@index([userId])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  senderId       String
+  body           String
+  createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  @@index([conversationId, createdAt])
+}

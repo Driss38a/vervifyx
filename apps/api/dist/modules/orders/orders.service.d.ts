@@ -1,0 +1,63 @@
+import { ConfigService } from '@nestjs/config';
+import { OrderStatus, Prisma } from '@prisma/client';
+import { PrismaService } from '../../prisma/prisma.service';
+import { Tx, WalletService } from '../wallet/wallet.service';
+import { CreateOrderDto } from './orders.dto';
+export declare class OrdersService {
+    private prisma;
+    private wallet;
+    private config;
+    constructor(prisma: PrismaService, wallet: WalletService, config: ConfigService);
+    create(buyerId: string, dto: CreateOrderDto): Promise<any>;
+    mine(buyerId: string, page?: number): any;
+    forStore(ownerId: string, storeId: string, status?: OrderStatus): Promise<any>;
+    getOne(userId: string, role: string, id: string): Promise<any>;
+    confirm(ownerId: string, id: string): Promise<any>;
+    cancel(userId: string, id: string): Promise<any>;
+    complete(ownerId: string, id: string): Promise<{
+        currency: string;
+        id: string;
+        status: import(".prisma/client").$Enums.OrderStatus;
+        createdAt: Date;
+        storeId: string;
+        shippingAddress: Prisma.JsonValue;
+        buyerId: string;
+        totalMinor: number;
+        subtotalMinor: number;
+        shippingFeeMinor: number;
+        platformFeeMinor: number;
+        buyerNote: string | null;
+    }>;
+    markDelivered(orderId: string, tx?: Tx): Promise<{
+        currency: string;
+        id: string;
+        status: import(".prisma/client").$Enums.OrderStatus;
+        createdAt: Date;
+        storeId: string;
+        shippingAddress: Prisma.JsonValue;
+        buyerId: string;
+        totalMinor: number;
+        subtotalMinor: number;
+        shippingFeeMinor: number;
+        platformFeeMinor: number;
+        buyerNote: string | null;
+    }>;
+    markReturned(orderId: string, tx?: Tx): Promise<{
+        currency: string;
+        id: string;
+        status: import(".prisma/client").$Enums.OrderStatus;
+        createdAt: Date;
+        storeId: string;
+        shippingAddress: Prisma.JsonValue;
+        buyerId: string;
+        totalMinor: number;
+        subtotalMinor: number;
+        shippingFeeMinor: number;
+        platformFeeMinor: number;
+        buyerNote: string | null;
+    }>;
+    private run;
+    private unwind;
+    private takeStock;
+    private restock;
+}

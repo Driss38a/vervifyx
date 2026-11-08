@@ -1,0 +1,42 @@
+name: Build Vervifyx Android Bundle (AAB)
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Set up Java JDK
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.x'
+          channel: 'stable'
+
+      - name: Install Dependencies
+        run: |
+          cd apps/mobile
+          flutter pub get
+
+      - name: Build Android App Bundle (AAB)
+        run: |
+          cd apps/mobile
+          flutter build aab --release --no-codesign
+
+      - name: Upload AAB Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: vervifyx-app-release
+          path: apps/mobile/build/app/outputs/bundle/release/app-release.aab
