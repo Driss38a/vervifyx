@@ -33,7 +33,7 @@ jobs:
       - name: Build Android App Bundle (AAB)
         run: |
           cd apps/mobile
-          flutter build aab --release
+          flutter build appbundle --release --no-pub
 
       - name: Upload AAB Artifact
         uses: actions/upload-artifact@v3
