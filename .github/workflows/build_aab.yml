@@ -30,10 +30,10 @@ jobs:
           cd apps/mobile
           flutter pub get
 
-      - name: Build Android App Bundle (AAB)
+      - name: Build Android APK
         run: |
           cd apps/mobile
-          flutter build appbundle --release --no-pub
+          flutter build apk --release
 
       - name: Upload AAB Artifact
         uses: actions/upload-artifact@v3
