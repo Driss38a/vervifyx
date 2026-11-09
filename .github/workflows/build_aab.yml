@@ -36,7 +36,7 @@ jobs:
           flutter build apk --release
 
       - name: Upload AAB Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: vervifyx-app-release
-          path: apps/mobile/build/app/outputs/bundle/release/app-release.aab
+          path: apps/mobile/build/app/outputs/flutter-apk/app-release.apk
