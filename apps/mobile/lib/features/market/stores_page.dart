@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:typed_data';
-import 'package:image_picker_web/image_picker_web.dart';
+import 'package:image_picker/image_picker.dart';
 
 class StoresPage extends ConsumerStatefulWidget {
   const StoresPage({super.key});
@@ -221,11 +221,13 @@ class _StoreDetailsFullScreenState extends State<StoreDetailsFullScreen> {
                     side: const BorderSide(color: Colors.blue),
                   ),
                   onPressed: () async {
-                    Uint8List? bytes = await ImagePickerWeb.getImageAsBytes();
-                    if (bytes != null) {
+                    final ImagePicker picker = ImagePicker();
+                    final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+                    if (image != null) {
+                      final bytes = await image.readAsBytes();
                       setDialogState(() {
                         _pickedImageBytes = bytes;
-                        _pickedImageName = 'صورة_مختارة_${DateTime.now().millisecondsSinceEpoch}.png';
+                        _pickedImageName = image.name;
                       });
                     }
                   },
@@ -400,7 +402,6 @@ class _StoreDetailsFullScreenState extends State<StoreDetailsFullScreen> {
                                   style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
                                 ),
                               ),
-                              // زر "طلب الآن" الذي يفتح نافذة تأكيد الطلب وإدخال المعلومات
                               trailing: ElevatedButton(
                                 style: ElevatedButton.styleFrom(backgroundColor: Colors.blue, foregroundColor: Colors.white),
                                 onPressed: () {
@@ -421,9 +422,7 @@ class _StoreDetailsFullScreenState extends State<StoreDetailsFullScreen> {
                                               foregroundColor: Colors.white,
                                             ),
                                             onPressed: () {
-                                              Navigator.of(ctx).pop(); // إغلاق النافذة الأولى
-
-                                              // فتح نافذة إدخال بيانات التوصيل للزبون
+                                              Navigator.of(ctx).pop();
                                               showDialog(
                                                 context: context,
                                                 builder: (BuildContext contextData) {
