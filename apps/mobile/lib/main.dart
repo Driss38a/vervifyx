@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker_web/image_picker_web.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:typed_data';
 
 import 'features/ads/ads_manager_page.dart';
 import 'features/admin/admin_panel.dart';
@@ -440,16 +441,20 @@ class _StoreDashboardScreenState extends State<StoreDashboardScreen> {
     TextEditingController oldPriceController = TextEditingController();
     TextEditingController mediaController = TextEditingController(text: 'لم يتم اختيار ملف ❌');
 
+    // استخدام image_picker العادية المتوافقة مع أندرويد وجميع المنصات
     Future<void> pickProductMedia(StateSetter setDialogState) async {
       try {
-        var mediaData = await ImagePickerWeb.getImageInfo();
-        if (mediaData != null && mediaData.fileName != null) {
-          setDialogState(() { mediaController.text = mediaData.fileName!; });
-        } else {
-          setDialogState(() { mediaController.text = 'product_media.jpg 🖼️'; });
+        final ImagePicker picker = ImagePicker();
+        final XFile? image = await picker.pickImage(source: ImageSource.gallery);
+        if (image != null) {
+          setDialogState(() { 
+            mediaController.text = image.name; 
+          });
         }
       } catch (e) {
-        setDialogState(() { mediaController.text = 'vervifyx_product.mp4 🎥'; });
+        setDialogState(() { 
+          mediaController.text = 'vervifyx_product.jpg 🖼️'; 
+        });
       }
     }
 
