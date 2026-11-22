@@ -21,6 +21,20 @@ jobs:
         with:
           channel: 'stable'
 
+      - name: Generate temporary keystore and print Base64
+        run: |
+          keytool -genkeypair -v -keystore upload-keystore.jks \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -alias upload \
+            -storepass "YourStrongPass123" \
+            -keypass "YourStrongPass123" \
+            -dname "CN=Driss, OU=VervifyX, O=VervifyX, L=Casablanca, S=Casablanca-Settat, C=MA"
+          base64 -w 0 upload-keystore.jks > keystore.b64
+          echo "=== START BASE64 ==="
+          cat keystore.b64
+          echo ""
+          echo "=== END BASE64 ==="
+
       - name: Clean and Install Dependencies
         run: |
           cd apps/mobile
