@@ -28,7 +28,8 @@ jobs:
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         run: |
-          echo "$KEYSTORE_BASE64" | tr -d '\n\r ' | base64 -d > apps/mobile/android/upload-keystore.jks
+          mkdir -p apps/mobile/android/app
+          echo "$KEYSTORE_BASE64" | tr -d '\n\r ' | base64 -d > apps/mobile/android/app/upload-keystore.jks
           cat <<EOF > apps/mobile/android/key.properties
           storePassword=$STORE_PASSWORD
           keyPassword=$KEY_PASSWORD
