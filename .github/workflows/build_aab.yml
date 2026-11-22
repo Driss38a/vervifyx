@@ -19,7 +19,6 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.47.9'
           channel: 'stable'
 
       - name: Clean and Install Dependencies
@@ -28,10 +27,21 @@ jobs:
           flutter clean
           flutter pub get
 
+      - name: Build Android AAB
+        run: |
+          cd apps/mobile
+          flutter build appbundle --release
+
       - name: Build Android APK
         run: |
           cd apps/mobile
           flutter build apk --release
+
+      - name: Upload AAB Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vervifyx-app-bundle-release
+          path: apps/mobile/build/app/outputs/bundle/release/app-release.aab
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
